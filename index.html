@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A question for you</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,600&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fde4ea; --ink:#4a1730; --card:#fff7f9; --rose:#e0245e; --rose-dk:#b81a4a; --soft:#f3b8c8; --muted:#8a4f66;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#2a0f1c; --ink:#ffe3ec; --card:#3a1626; --rose:#ff4d82; --rose-dk:#e0306a; --soft:#6b2a44; --muted:#e2a3b8; color-scheme:dark}
+}
+:root[data-theme="dark"]{--bg:#2a0f1c; --ink:#ffe3ec; --card:#3a1626; --rose:#ff4d82; --rose-dk:#e0306a; --soft:#6b2a44; --muted:#e2a3b8; color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*{box-sizing:border-box}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:'Nunito',system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.card{background:var(--card);border-radius:28px;padding:34px 26px 38px;width:min(92vw,440px);text-align:center;
+  box-shadow:0 18px 50px rgba(224,36,94,.18);position:relative;z-index:2;max-height:94vh;overflow-y:auto}
+.emoji{font-size:76px;line-height:1;display:block;margin-bottom:10px}
+h1{font-family:'Fraunces',Georgia,serif;font-style:italic;font-weight:600;font-size:clamp(28px,7.5vw,38px);line-height:1.15;margin:0 0 8px;word-break:break-word}
+p.sub{margin:0 0 24px;color:var(--muted);font-weight:600;min-height:1.5em}
+.hidden{display:none!important}
+input[type=text]{width:100%;font:inherit;font-weight:800;font-size:20px;text-align:center;padding:14px 18px;border-radius:999px;
+  border:2px solid var(--soft);background:transparent;color:var(--ink);margin-bottom:16px}
+input[type=text]:focus{outline:3px solid var(--rose);border-color:var(--rose)}
+button{font:inherit;font-weight:800;font-size:18px;border:0;border-radius:999px;padding:14px 32px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.primary{background:var(--rose);color:#fff;box-shadow:0 6px 0 var(--rose-dk)}
+.primary:active{transform:translateY(4px);box-shadow:0 2px 0 var(--rose-dk)}
+.primary:disabled{opacity:.45;cursor:not-allowed}
+.btns{display:flex;gap:16px;justify-content:center;align-items:center;min-height:64px}
+#no{background:var(--soft);color:var(--ink);transition:left .25s ease,top .25s ease,transform .25s}
+#no.free{position:fixed;z-index:5}
+#yes{transition:font-size .15s,padding .15s,transform .15s}
+.group{margin:0 0 18px;text-align:left}
+.group b{display:block;margin-bottom:8px;font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:transparent;color:var(--ink);border:2px solid var(--soft);padding:8px 16px;font-size:15px}
+.chip[aria-pressed="true"]{background:var(--rose);border-color:var(--rose);color:#fff}
+.summary{background:var(--soft);color:var(--ink);border-radius:18px;padding:14px;font-weight:700;margin:0 0 16px;text-align:left;white-space:pre-line}
+a.wa{display:inline-block;text-decoration:none}
+.heart{position:fixed;top:100%;z-index:1;pointer-events:none;animation:rise linear forwards}
+@keyframes rise{to{transform:translateY(-120vh) rotate(25deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){.heart{display:none}#no{transition:none}}
+</style>
+</head>
+<body>
+<main class="card" id="card">
+  <span class="emoji" id="emoji">👋</span>
+  <h1 id="title">Hi, what’s your name?</h1>
+  <p class="sub" id="sub">Type it in. I have something to ask you.</p>
+
+  <!-- Step 1: name -->
+  <section id="s1">
+    <input type="text" id="name" placeholder="Your name" maxlength="30" autocomplete="given-name" aria-label="Your name">
+    <button class="primary" id="go" disabled>Continue</button>
+  </section>
+
+  <!-- Step 2: the question -->
+  <section id="s2" class="hidden">
+    <div class="btns" id="btns">
+      <button class="primary" id="yes">Yes</button>
+      <button id="no">No</button>
+    </div>
+  </section>
+
+  <!-- Step 3: plan -->
+  <section id="s3" class="hidden">
+    <div class="group"><b>What sounds good?</b><div class="chips" data-key="what"></div></div>
+    <div class="group"><b>Which day?</b><div class="chips" data-key="day"></div></div>
+    <div class="group"><b>What time?</b><div class="chips" data-key="time"></div></div>
+    <button class="primary" id="plan" disabled>Lock it in</button>
+  </section>
+
+  <!-- Step 4: summary -->
+  <section id="s4" class="hidden">
+    <div class="summary" id="summary"></div>
+    <a class="wa" id="wa" target="_blank" rel="noopener"><button class="primary" type="button">Send me the plan</button></a>
+  </section>
+</main>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var nameIn=$('name'), go=$('go'), yes=$('yes'), no=$('no');
+  var title=$('title'), sub=$('sub'), emoji=$('emoji');
+  var name='', tries=0, finished=false, choice={what:'',day:'',time:''};
+
+  var opts={
+    what:['Coffee ☕','Dinner 🍝','Movie 🎬','Long walk 🌳','Ice cream 🍦'],
+    day:['This weekend','Next weekend','Friday','Saturday','Sunday'],
+    time:['Morning','Afternoon','Evening','Night']
+  };
+  var lines=["Are you sure, NAME? 🥹","Wrong button!","Try the other one 😏","Nope, can’t click that.","The Yes button misses you.","Still no? Really?","Okay, that No button is broken."];
+  var faces=["🥺","😢","😭","🥹","😤","🙈","😏"];
+
+  function show(id){['s1','s2','s3','s4'].forEach(function(s){$(s).classList.toggle('hidden',s!==id)})}
+  function clean(s){return s.replace(/\s+/g,' ').trim()}
+
+  // Realtime: heading follows what she types
+  nameIn.addEventListener('input',function(){
+    name=clean(nameIn.value);
+    title.textContent=name?('Hi '+name+' 😊'):'Hi, what’s your name?';
+    go.disabled=!name;
+  });
+  nameIn.addEventListener('keydown',function(e){if(e.key==='Enter'&&name)start()});
+  go.addEventListener('click',start);
+
+  function start(){
+    if(!name) return;
+    emoji.textContent='🥺';
+    title.textContent='Will you go out with me, '+name+'?';
+    sub.textContent='I promise good company and bad jokes.';
+    show('s2');
+  }
+
+  // Dodging No
+  function nearYes(x,y,w,h){var r=yes.getBoundingClientRect();return x<r.right+20&&x+w>r.left-20&&y<r.bottom+20&&y+h>r.top-20}
+  function dodge(e){
+    if(finished) return;
+    if(e&&e.preventDefault) e.preventDefault();
+    tries++;
+    no.classList.add('free');
+    var w=no.offsetWidth,h=no.offsetHeight,pad=12,t=0,x,y;
+    do{
+      x=pad+Math.random()*Math.max(innerWidth-w-pad*2,0);
+      y=pad+Math.random()*Math.max(innerHeight-h-pad*2,0);
+      t++;
+    }while(t<20&&nearYes(x,y,w,h));
+    no.style.left=x+'px';no.style.top=y+'px';
+    sub.textContent=lines[(tries-1)%lines.length].replace('NAME',name);
+    emoji.textContent=faces[(tries-1)%faces.length];
+    var s=Math.min(1+tries*0.12,2);
+    yes.style.fontSize=(18*s)+'px';
+    yes.style.padding=(14*s)+'px '+(32*s)+'px';
+    if(tries>4) no.style.transform='scale('+Math.max(1-(tries-4)*0.12,0.4)+')';
+  }
+  ['mouseenter','pointerdown','touchstart','click','focus'].forEach(function(ev){no.addEventListener(ev,dodge,{passive:false})});
+  document.addEventListener('mousemove',function(e){
+    if(finished||$('s2').classList.contains('hidden')) return;
+    var r=no.getBoundingClientRect();
+    if(Math.hypot(e.clientX-(r.left+r.width/2),e.clientY-(r.top+r.height/2))<90) dodge();
+  });
+
+  // Yes
+  yes.addEventListener('click',function(){
+    finished=true;
+    no.style.display='none';
+    emoji.textContent='🥰';
+    title.textContent='Yay, '+name+'! 🎉';
+    sub.textContent='Now let’s plan it. Pick what you like.';
+    show('s3');
+    for(var i=0;i<50;i++) setTimeout(heart,i*70);
+  });
+
+  // Plan chips
+  document.querySelectorAll('.chips').forEach(function(box){
+    var key=box.getAttribute('data-key');
+    opts[key].forEach(function(label){
+      var b=document.createElement('button');
+      b.type='button';b.className='chip';b.textContent=label;b.setAttribute('aria-pressed','false');
+      b.addEventListener('click',function(){
+        box.querySelectorAll('.chip').forEach(function(c){c.setAttribute('aria-pressed','false')});
+        b.setAttribute('aria-pressed','true');
+        choice[key]=label;
+        $('plan').disabled=!(choice.what&&choice.day&&choice.time);
+      });
+      box.appendChild(b);
+    });
+  });
+
+  $('plan').addEventListener('click',function(){
+    var text='Date plan for '+name+':\n'+choice.what+'\n'+choice.day+', '+choice.time;
+    $('summary').textContent=text;
+    var msg='Hi! I\u2019m '+name+'. I said YES 💖\n'+choice.what+' on '+choice.day+' ('+choice.time+'). It\u2019s a date!';
+    $('wa').href='https://wa.me/918978010439?text='+encodeURIComponent(msg);
+    title.textContent='It’s a date! 💖';
+    sub.textContent='See you soon, '+name+'.';
+    emoji.textContent='💑';
+    show('s4');
+  });
+
+  function heart(){
+    var h=document.createElement('div');
+    h.className='heart';
+    h.textContent=['💖','💗','💕','❤️','💘'][Math.floor(Math.random()*5)];
+    h.style.left=Math.random()*100+'vw';
+    h.style.fontSize=(18+Math.random()*28)+'px';
+    h.style.animationDuration=(3+Math.random()*3)+'s';
+    document.body.appendChild(h);
+    setTimeout(function(){h.remove()},6500);
+  }
+})();
+</script>
+</body>
+</html>
